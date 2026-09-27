@@ -1,0 +1,17 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "jupyter.askForKernelRestart": false,
+  "jupyter.interactiveWindow.creationMode": "perFile",
+  "jupyter.widgetScriptSources": ["jsdelivr.com", "unpkg.com"],
+  "files.exclude": { "**/.ipynb_checkpoints": true, "**/__pycache__": true },
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": { "source.organizeImports": "explicit" },
+  "editor.fontSize": 12,
+  "editor.fontLigatures": true,
+  "editor.wordWrap": "on",
+  "notebook.formatOnSave.enabled": true,
+  "notebook.output.textLineLimit": 40,
+  "python.analysis.autoImportCompletions": true
+}
