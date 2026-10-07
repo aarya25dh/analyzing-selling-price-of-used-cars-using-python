@@ -1,114 +1,76 @@
-# ============================================================
-# Linear Regression - Used Car Price Prediction
-# Custom Gradient Descent Implementation
-# ============================================================
-
-import pandas as pd
+# linear regression from scratch (gradient descent) to predict used car prices
 import numpy as np
-
-from sklearn.model_selection import train_test_split
+import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-
-# ============================================================
-# 1. Custom Linear Regression
-# ============================================================
 
 class LinearRegression:
     def __init__(self, learning_rate=0.05, n_iterations=3000, alpha=10):
-        self.alpha = alpha  # L2 penalty (keeps weights small, avoids overfitting)
-        self.learning_rate = learning_rate
-        self.n_iterations = n_iterations
+        self.alpha = alpha  # strength of the L2 penalty (keeps weights small)
+        self.learning_rate = learning_rate  # size of each update step
+        self.n_iterations = n_iterations  # how many times we update
         self.weights = None
         self.bias = 0
-        self.loss = []
+        self.loss = []  # loss after every iteration
 
     @staticmethod
     def _mean_squared_error(y, y_hat):
+        # average of the squared differences
         n = y.shape[0]
-        error = np.sum((y - y_hat) ** 2) / n
-        return error
+        return np.sum((y - y_hat) ** 2) / n
 
     def _gradient_descent(self, X, y):
-
         n = y.shape[0]
 
-        # Prediction: y_hat = Xw + b
+        # current predictions: y_hat = X * w + b
         y_hat = X @ self.weights + self.bias
 
-        # Gradient for weights
+        # slope of the loss for the weights
         de_dw = -(2 / n) * np.dot(X.T, (y - y_hat))
 
-        # L2 penalty added to the weight gradient
+        # add the L2 penalty to the weight slope
         de_dw += (2 * self.alpha / n) * self.weights
 
-        # Gradient for bias
+        # slope of the loss for the bias
         de_db = -(2 / n) * np.sum(y - y_hat)
 
-        # Update weights and bias
+        # move weights and bias a small step downhill
         self.weights -= self.learning_rate * de_dw
         self.bias -= self.learning_rate * de_db
 
     def fit(self, X, y):
-
-        # Initialize weights
+        # start with all weights at zero
         self.weights = np.zeros(X.shape[1])
         self.loss = []
 
         for i in range(self.n_iterations):
-
             self._gradient_descent(X, y)
 
-            # Calculate predictions
+            # track the loss so we can see it going down
             y_hat = X @ self.weights + self.bias
-
-            # Calculate loss
             loss = self._mean_squared_error(y, y_hat)
-
             self.loss.append(loss)
 
+            # print progress every 300 iterations
             if (i + 1) % 300 == 0:
-                print(
-                    f"Iteration [{i + 1}/{self.n_iterations}] "
-                    f"Loss: {loss:.4f}"
-                )
+                print(f"Iteration [{i + 1}/{self.n_iterations}] Loss: {loss:.4f}")
 
     def predict(self, X):
-
         return X @ self.weights + self.bias
 
 
-# ============================================================
-# 2. Load Dataset
-# ============================================================
+# load the dataset
+df = pd.read_csv("data/processed/car_new_details.csv")
 
-df = pd.read_csv("../data/processed/car_new_details.csv")
-
-
-# ============================================================
-# 3. Define Target and Features
-# ============================================================
-
+# target is the price, features are everything else
+# Model and Location have too many values, Car_Age is just the opposite of Year
 y = df["Price"]
+X = df.drop(columns=["Price", "Model", "Location", "Car_Age"])
 
-# Drop Model and Location
-# Also drop Car_Age (it is just the opposite of Year)
-X = df.drop(
-    columns=[
-        "Price",
-        "Model",
-        "Location",
-        "Car_Age"
-    ]
-)
-
-
-# ============================================================
-# 4. Define Feature Groups
-# ============================================================
-
+# group the columns by how they need to be prepared
 categorical_columns = [
     "Make",
     "Fuel Type",
@@ -116,7 +78,7 @@ categorical_columns = [
     "Color",
     "Seller Type",
     "Drivetrain",
-    "Location_Grouped"
+    "Location_Grouped",
 ]
 
 numerical_columns = [
@@ -131,144 +93,64 @@ numerical_columns = [
     "Seating Capacity",
     "Fuel Tank Capacity",
     "Kilometers_Per_Year",
-    "Owner_Count"
+    "Owner_Count",
 ]
 
-binary_columns = [
-    "Unregistered"
-]
+binary_columns = ["Unregistered"]
 
-
-# ============================================================
-# 5. Train-Test Split
-# ============================================================
-
+# split into 80% training and 20% testing
 X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42
+    X, y, test_size=0.2, random_state=42
 )
 
-
-# ============================================================
-# 6. Preprocessing
-# ============================================================
-
+# numbers are scaled, categories are one-hot encoded, 0/1 columns are kept as they are
 preprocessor = ColumnTransformer(
     transformers=[
-        # Numerical → StandardScaler
-        (
-            "num",
-            StandardScaler(),
-            numerical_columns
-        ),
-
-        # Categorical → One-Hot Encoding
+        ("num", StandardScaler(), numerical_columns),
         (
             "cat",
-            OneHotEncoder(handle_unknown="ignore", drop="first"),
-            categorical_columns
+            OneHotEncoder(handle_unknown="ignore", drop="first", sparse_output=False),
+            categorical_columns,
         ),
-
-        # Binary → Keep 0/1
-        (
-            "binary",
-            "passthrough",
-            binary_columns
-        )
+        ("binary", "passthrough", binary_columns),
     ]
 )
 
-
-# ============================================================
-# 7. Fit Preprocessor ONLY on Training Data
-# ============================================================
-
+# learn the scaling and encoding from the training data only
 X_train_processed = preprocessor.fit_transform(X_train)
 
+# apply the same scaling and encoding to the test data
 X_test_processed = preprocessor.transform(X_test)
-
-# Convert sparse matrix to dense NumPy array
-X_train_processed = X_train_processed.toarray()
-X_test_processed = X_test_processed.toarray()
-
-
-# ============================================================
-# 8. Prepare Target (log + standardize)
-# ============================================================
 
 y_train_numpy = y_train.to_numpy(dtype=float)
 y_test_numpy = y_test.to_numpy(dtype=float)
 
-# Log makes the skewed prices more even
+# log makes the skewed prices more even
 y_train_log = np.log1p(y_train_numpy)
 
-# Standardize using TRAINING data only
+# scale the target using training data only
 y_mean = y_train_log.mean()
 y_std = y_train_log.std()
-
 y_train_scaled = (y_train_log - y_mean) / y_std
 
+# create the model and train it
+model = LinearRegression(learning_rate=0.05, n_iterations=3000, alpha=10)
+model.fit(X_train_processed, y_train_scaled)
 
-# ============================================================
-# 9. Create and Train Model
-# ============================================================
-
-model = LinearRegression(
-    learning_rate=0.05,
-    n_iterations=3000,
-    alpha=10
-)
-
-model.fit(
-    X_train_processed,
-    y_train_scaled
-)
-
-
-# ============================================================
-# 10. Make Predictions (convert back to real price)
-# ============================================================
-
+# predict on the test data, then undo the scaling and log to get real prices
 y_pred_scaled = model.predict(X_test_processed)
-
 y_pred = np.expm1(y_pred_scaled * y_std + y_mean)
 
+# measure how good the predictions are
+mae = mean_absolute_error(y_test_numpy, y_pred)
+rmse = mean_squared_error(y_test_numpy, y_pred) ** 0.5
+r2 = r2_score(y_test_numpy, y_pred)
 
-# ============================================================
-# 11. Evaluation
-# ============================================================
-
-mae = mean_absolute_error(
-    y_test_numpy,
-    y_pred
-)
-
-rmse = mean_squared_error(
-    y_test_numpy,
-    y_pred
-) ** 0.5
-
-r2 = r2_score(
-    y_test_numpy,
-    y_pred
-)
-
-
-# ============================================================
-# 12. Display Results
-# ============================================================
-
-print("\n" + "=" * 60)
-print("Custom Linear Regression - Used Car Price Prediction")
-print("=" * 60)
-
+# show the results
+print("Linear Regression for Used Car Price Prediction")
 print(f"MAE : {mae:,.2f}")
 print(f"RMSE: {rmse:,.2f}")
 print(f"R²  : {r2:.4f}")
-
-print("=" * 60)
 
 print("\nDataset Information:")
 print(f"Total samples       : {len(df)}")
@@ -278,5 +160,3 @@ print(f"Processed features  : {X_train_processed.shape[1]}")
 print(f"Learning rate       : {model.learning_rate}")
 print(f"Iterations          : {model.n_iterations}")
 print(f"L2 alpha            : {model.alpha}")
-
-print("=" * 60)
