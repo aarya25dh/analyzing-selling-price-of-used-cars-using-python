@@ -1,10 +1,7 @@
-# compare four models on the same train/test split
-# run from the project root folder: python models/compare_models.py
-
+# comparing the four models on the same train/test split
 import os
 
-# these two lines stop a crash on Mac when xgboost and pytorch run together
-# (they must stay above the other imports)
+# this is for not crashing when xgboost and pytorch are run together
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 os.environ["OMP_NUM_THREADS"] = "1"
 
@@ -20,15 +17,15 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from torch import nn
 from xgboost import XGBRegressor
 
-# load the dataset and drop columns we don't use
+# loading the dataset and dropping columns that are not needed for the models
 df = pd.read_csv("data/processed/car_new_details.csv")
 df = df.drop(columns=["Model", "Location", "Owner", "Year"])
 
-# target is the price, features are everything else
+# target is the price and the features are everything else
 y = df["Price"]
 X = df.drop(columns=["Price"])
 
-# split into 80% training and 20% testing
+# splitting the data into 80% training and 20% testing
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
@@ -39,8 +36,7 @@ numerical_columns = X.select_dtypes(include="number").columns.tolist()
 
 
 def prepare_data(scale_numbers, min_frequency=None):
-    # one-hot encode the categories
-    # min_frequency groups rare categories together (for example a brand with 1 car)
+    # one-hot encoding the text categories
     if min_frequency is None:
         unknown_option = "ignore"
     else:
@@ -52,7 +48,7 @@ def prepare_data(scale_numbers, min_frequency=None):
         sparse_output=False,
     )
 
-    # scale the numbers only if the model needs it
+    # scaling the numbers if the model needs it like linear regression and neural networks
     if scale_numbers:
         number_step = StandardScaler()
     else:
@@ -63,7 +59,7 @@ def prepare_data(scale_numbers, min_frequency=None):
         ("numerical", number_step, numerical_columns),
     ])
 
-    # learn from the training data only, then apply to both
+    # learning from the training data only, then apply to both
     train = np.asarray(preprocessor.fit_transform(X_train), dtype=float)
     test = np.asarray(preprocessor.transform(X_test), dtype=float)
     return train, test
@@ -72,15 +68,13 @@ def prepare_data(scale_numbers, min_frequency=None):
 # random forest and xgboost do not need scaled numbers
 X_train_tree, X_test_tree = prepare_data(scale_numbers=False)
 
-# the neural network needs scaled numbers
+# the neural network needs scaled numbers so scaling here
 X_train_scaled, X_test_scaled = prepare_data(scale_numbers=True)
 
-# plain linear regression gets confused by rare categories,
-# so categories with fewer than 20 cars are grouped together
+# plain linear regression gets confused by rare categories so categories with fewer than 20 cars are grouped together
 X_train_linear, X_test_linear = prepare_data(scale_numbers=True, min_frequency=20)
 
-# linear regression and neural network learn better from log(price)
-# we also scale it, using the training data only
+# linear regression and neural network learn better from log(price) so we also scale it but only on the training data
 y_train_log = np.log1p(y_train.to_numpy(dtype=float))
 y_mean = y_train_log.mean()
 y_std = y_train_log.std()
@@ -88,7 +82,7 @@ y_train_scaled = (y_train_log - y_mean) / y_std
 
 
 def to_real_price(predictions_scaled):
-    # undo the scaling and the log to get prices back
+    # redo the scaling to get the actual prices
     return np.expm1(predictions_scaled * y_std + y_mean)
 
 
@@ -145,7 +139,7 @@ network = nn.Sequential(
 loss_function = nn.MSELoss()
 optimizer = torch.optim.Adam(network.parameters(), lr=0.001, weight_decay=1e-3)
 
-# train for 300 rounds
+# training for 300 rounds
 for epoch in range(300):
     network.train()
     loss = loss_function(network(X_train_tensor), y_train_tensor)
@@ -154,13 +148,13 @@ for epoch in range(300):
     loss.backward()
     optimizer.step()
 
-# predict the test data
+# predicting for the test data
 network.eval()
 with torch.no_grad():
     network_output = network(X_test_tensor).numpy().flatten()
 predictions["Neural Network"] = to_real_price(network_output)
 
-# measure the errors of every model
+# measuring the errors of every model
 rows = []
 for name, predicted_prices in predictions.items():
     rows.append({

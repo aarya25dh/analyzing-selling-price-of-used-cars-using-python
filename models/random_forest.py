@@ -1,4 +1,4 @@
-# random forest from scratch, compared with sklearn's random forest
+# random forest model by scratch as well and from scratch Scikit-Learn as well
 
 import numpy as np
 import pandas as pd
@@ -7,10 +7,10 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 
-# load the dataset
+# loading the dataset
 df = pd.read_csv("data/processed/car_new_details.csv")
 
-# drop columns we don't want to use
+# drop the columns that are not needed 
 df = df.drop(columns=["Model", "Location", "Owner", "Year", "Kilometer"])
 
 # target is the price, features are everything else
@@ -26,7 +26,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-# one-hot encode the categories and keep the numbers as they are
+# one-hot encoding the categories but keeping the numbers as they are since random forest doesn't need scaling
 preprocessor = ColumnTransformer(
     transformers=[
         (
@@ -38,7 +38,7 @@ preprocessor = ColumnTransformer(
     ]
 )
 
-# learn the encoding from the training data, then apply it to both sets
+# learning the encoding from the training data, then apply it to both sets
 X_train_encoded = preprocessor.fit_transform(X_train)
 X_test_encoded = preprocessor.transform(X_test)
 
@@ -55,7 +55,7 @@ def evaluate_model(actual, predicted):
 
     mae = np.mean(np.abs(errors))  # average error
     mse = np.mean(errors ** 2)  # average squared error
-    rmse = np.sqrt(mse)  # same as mse but in price units
+    rmse = np.sqrt(mse) 
     r2 = 1 - np.sum(errors ** 2) / np.sum((actual - np.mean(actual)) ** 2)
 
     print(f"MAE  : {mae:.2f}")
@@ -105,7 +105,7 @@ class DecisionTree:
                     + len(right_y) * np.var(right_y)
                 ) / n
 
-                # keep the split with the lowest error
+                # keeping the split with the lowest error to move further
                 if weighted_mse < best_mse:
                     best_mse = weighted_mse
                     best_feature = f
@@ -114,20 +114,19 @@ class DecisionTree:
         return best_feature, best_threshold
 
     def _build_tree(self, X, y, depth=0):
-        # stop growing: make a leaf that predicts the average price
         if (depth >= self.max_depth
                 or len(y) < self.min_samples_split
                 or np.all(y == y[0])):
             return {"leaf": True, "prediction": np.mean(y)}
 
-        # pick a random set of features to try at this split
+        # picking a random set of features to try at this split
         feature_indices = self.rng.choice(
             X.shape[1], self.max_features, replace=False
         )
 
         feature, threshold = self._find_best_split(X, y, feature_indices)
 
-        # no useful split found, so make a leaf
+        # if no useful split found then leaf is created
         if feature is None:
             return {"leaf": True, "prediction": np.mean(y)}
 
@@ -143,13 +142,12 @@ class DecisionTree:
         }
 
     def fit(self, X, y):
-        # by default try all features at every split
         if self.max_features is None:
             self.max_features = X.shape[1]
         self.tree = self._build_tree(X, y)
 
     def _predict_row(self, node, row):
-        # walk down the tree until we reach a leaf
+        # traversing the tree until a leaf is reached and returning the prediction
         while not node["leaf"]:
             if row[node["feature"]] <= node["threshold"]:
                 node = node["left"]
@@ -164,7 +162,7 @@ class DecisionTree:
 class RandomForest:
     def __init__(self, n_trees=50, max_depth=6, min_samples_split=20,
                  max_features=None, random_state=42):
-        self.n_trees = n_trees  # how many trees in the forest
+        self.n_trees = n_trees  # how many trees are there in the forest
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.max_features = max_features
@@ -175,10 +173,10 @@ class RandomForest:
         self.trees = []
 
         for _ in range(self.n_trees):
-            # bootstrap sample: pick rows at random, the same row can repeat
+            # picking rows at random so the same row can repeat
             idx = self.rng.choice(len(X), size=len(X), replace=True)
 
-            # train one tree on that sample
+            # train the tree for the random sample
             tree = DecisionTree(
                 max_depth=self.max_depth,
                 min_samples_split=self.min_samples_split,
@@ -195,20 +193,20 @@ class RandomForest:
 
 n_features = X_train_encoded.shape[1]
 
-# train our own random forest
+# training our own random forest
 print("\nTraining our Random Forest...")
 
 our_model = RandomForest(
     n_trees=50,
     max_depth=6,
     min_samples_split=20,
-    max_features=max(1, n_features // 3),  # a third of the features per split
+    max_features=max(1, n_features // 3),
     random_state=42,
 )
 our_model.fit(X_train_encoded, y_train)
 our_predictions = our_model.predict(X_test_encoded)
 
-# sklearn's forest with the same settings (fair comparison)
+# sklearn's forest with the same settings to see the difference
 print("Training Sklearn Random Forest...")
 
 sklearn_same = RandomForestRegressor(
@@ -222,7 +220,7 @@ sklearn_same = RandomForestRegressor(
 sklearn_same.fit(X_train_encoded, y_train)
 sklearn_same_predictions = sklearn_same.predict(X_test_encoded)
 
-# sklearn's forest with default settings (best case for reference)
+# sklearn's forest with default settings to see the best case
 print("Training sklearn Random Forest (defaults)...")
 
 sklearn_default = RandomForestRegressor(

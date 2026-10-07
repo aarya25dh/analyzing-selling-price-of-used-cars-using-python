@@ -1,4 +1,4 @@
-# linear regression from scratch (gradient descent) to predict used car prices
+# linear regression from scratch using gradient descent algorithm to predict used car prices
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -28,21 +28,21 @@ class LinearRegression:
         # current predictions: y_hat = X * w + b
         y_hat = X @ self.weights + self.bias
 
-        # slope of the loss for the weights
+        # calculating the slope of the loss for the weights
         de_dw = -(2 / n) * np.dot(X.T, (y - y_hat))
 
-        # add the L2 penalty to the weight slope
+        # adding the L2 penalty to the weight slope
         de_dw += (2 * self.alpha / n) * self.weights
 
-        # slope of the loss for the bias
+        # calculating the slope of the loss for the bias
         de_db = -(2 / n) * np.sum(y - y_hat)
 
-        # move weights and bias a small step downhill
+        # moving weights and bias using learning rate to reduce it slowly 
         self.weights -= self.learning_rate * de_dw
         self.bias -= self.learning_rate * de_db
 
     def fit(self, X, y):
-        # start with all weights at zero
+        # starting with all weights at zero
         self.weights = np.zeros(X.shape[1])
         self.loss = []
 
@@ -54,7 +54,7 @@ class LinearRegression:
             loss = self._mean_squared_error(y, y_hat)
             self.loss.append(loss)
 
-            # print progress every 300 iterations
+            # printing progress every 300 iterations
             if (i + 1) % 300 == 0:
                 print(f"Iteration [{i + 1}/{self.n_iterations}] Loss: {loss:.4f}")
 
@@ -62,15 +62,15 @@ class LinearRegression:
         return X @ self.weights + self.bias
 
 
-# load the dataset
+# loading the dataset from processed data 
 df = pd.read_csv("data/processed/car_new_details.csv")
 
 # target is the price, features are everything else
-# Model and Location have too many values, Car_Age is just the opposite of Year
 y = df["Price"]
 X = df.drop(columns=["Price", "Model", "Location", "Car_Age"])
 
-# group the columns by how they need to be prepared
+# grouping the columns by how they need to be prepared
+# categorical columns are text so we encode it and numerical columns are numbers so we scale it
 categorical_columns = [
     "Make",
     "Fuel Type",
@@ -98,7 +98,7 @@ numerical_columns = [
 
 binary_columns = ["Unregistered"]
 
-# split into 80% training and 20% testing
+# splitting into 80% training and 20% testing
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
@@ -146,7 +146,7 @@ mae = mean_absolute_error(y_test_numpy, y_pred)
 rmse = mean_squared_error(y_test_numpy, y_pred) ** 0.5
 r2 = r2_score(y_test_numpy, y_pred)
 
-# show the results
+# results
 print("Linear Regression for Used Car Price Prediction")
 print(f"MAE : {mae:,.2f}")
 print(f"RMSE: {rmse:,.2f}")

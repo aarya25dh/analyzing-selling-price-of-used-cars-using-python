@@ -7,11 +7,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from xgboost import XGBRegressor
 
-# load the dataset
+# loading the dataset
 df = pd.read_csv("data/processed/car_new_details.csv")
 
-# drop columns we don't want to use
-# errors="ignore" means no error if a column is already missing
+# dropping columns that are not needed for the model
 df = df.drop(
     columns=["Model", "Location", "Owner", "Year"],
     errors="ignore",
@@ -60,7 +59,7 @@ X_test_encoded = encoder.transform(X_test)
 print("\nEncoded training shape:", X_train_encoded.shape)
 print("Encoded testing shape :", X_test_encoded.shape)
 
-# create the xgboost model
+# creating the xgboost model
 model = XGBRegressor(
     n_estimators=500,  # number of trees
     learning_rate=0.05,  # how much each tree adds
@@ -70,11 +69,11 @@ model = XGBRegressor(
     random_state=42,
 )
 
-# train the model
+# training the model
 print("\nTraining XGBoost...")
 model.fit(X_train_encoded, y_train)
 
-# predict prices for the test data
+# predicting prices for the test data
 y_pred = model.predict(X_test_encoded)
 
 # measure how good the predictions are
@@ -82,7 +81,7 @@ errors = y_test.to_numpy() - y_pred
 
 mae = np.mean(np.abs(errors))  # average error
 mse = np.mean(errors ** 2)  # average squared error
-rmse = np.sqrt(mse)  # same as mse but in price units
+rmse = np.sqrt(mse) 
 r2 = 1 - (
     np.sum(errors ** 2)
     / np.sum((y_test.to_numpy() - np.mean(y_test)) ** 2)
@@ -94,7 +93,7 @@ print("MSE :", round(mse, 2))
 print("RMSE:", round(rmse, 2))
 print("R²  :", round(r2, 4))
 
-# see which features the model used the most
+# which features the model used the most to see correlation between features and price
 feature_names = encoder.get_feature_names_out()
 
 importance = pd.DataFrame({

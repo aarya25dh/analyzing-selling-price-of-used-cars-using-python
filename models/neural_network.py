@@ -12,15 +12,14 @@ from torch import nn
 # random seed value is 42
 torch.manual_seed(42)
 
-# load the dataset (run this file from the project root folder)
+# loading the dataset from processed data
 df = pd.read_csv("data/processed/car_new_details.csv")
 
 # target is the price, features are everything else
-# Model and Location have too many values, Car_Age is just the opposite of Year
 y = df["Price"]
 X = df.drop(columns=["Price", "Model", "Location", "Car_Age"])
 
-# group the columns by how they need to be prepared
+# grouping the columns by how they need to be prepared
 categorical_columns = [
     "Make",
     "Fuel Type",
@@ -66,10 +65,10 @@ preprocessor = ColumnTransformer(
     ]
 )
 
-# learn the scaling and encoding from the training data only
+# learning the scaling and encoding from the training data only
 X_train_processed = preprocessor.fit_transform(X_train)
 
-# apply the same scaling and encoding to the test data
+# applying the same scaling and encoding to the test data
 X_test_processed = preprocessor.transform(X_test)
 
 y_train_numpy = y_train.to_numpy(dtype=float)
@@ -78,12 +77,12 @@ y_test_numpy = y_test.to_numpy(dtype=float)
 # log makes the skewed prices more even
 y_train_log = np.log1p(y_train_numpy)
 
-# scale the target using training data only
+# scaling the target using training data only
 y_mean = y_train_log.mean()
 y_std = y_train_log.std()
 y_train_scaled = (y_train_log - y_mean) / y_std
 
-# convert the data to pytorch tensors
+# converting the data to pytorch tensors
 X_train_tensor = torch.tensor(X_train_processed, dtype=torch.float32)
 X_test_tensor = torch.tensor(X_test_processed, dtype=torch.float32)
 y_train_tensor = torch.tensor(y_train_scaled, dtype=torch.float32).reshape(-1, 1)
@@ -97,7 +96,7 @@ class CarPriceNN(nn.Module):
             # input layer to first hidden layer
             nn.Linear(input_size, 128),
             nn.ReLU(),
-            nn.Dropout(0.2),  # randomly switch off 20% of neurons to avoid overfitting
+            nn.Dropout(0.2),  
 
             # second hidden layer
             nn.Linear(128, 64),
@@ -108,7 +107,7 @@ class CarPriceNN(nn.Module):
             nn.Linear(64, 32),
             nn.ReLU(),
 
-            # output layer: one number because we predict one price
+            # output layer which has one number because we predict one price
             nn.Linear(32, 1),
         )
 
@@ -116,7 +115,7 @@ class CarPriceNN(nn.Module):
         return self.network(x)
 
 
-# create the model
+# creating the model
 input_size = X_train_tensor.shape[1]
 model = CarPriceNN(input_size)
 
@@ -130,33 +129,33 @@ optimizer = torch.optim.Adam(
     weight_decay=1e-3,
 )
 
-# train the model
+# training the model
 epochs = 300
 training_losses = []
 
 for epoch in range(epochs):
-    # switch to training mode
+    # switching to training mode
     model.train()
 
-    # predict, then measure how wrong the predictions are
+    # predicting then measure how wrong the predictions are
     predictions = model(X_train_tensor)
     loss = criterion(predictions, y_train_tensor)
 
-    # clear old gradients, calculate new ones, then update the weights
+    # updating the weights by calculating the gradients
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
     training_losses.append(loss.item())
 
-    # print progress every 30 epochs
+    # printing progress every 30 epochs
     if (epoch + 1) % 30 == 0:
         print(f"Epoch [{epoch + 1}/{epochs}] Loss: {loss.item():.4f}")
 
-# switch to evaluation mode (turns dropout off)
+# evaluation process
 model.eval()
 
-# predict on the test data without tracking gradients
+# predicting on the test data without tracking gradients
 with torch.no_grad():
     y_pred_tensor = model(X_test_tensor)
 
@@ -164,12 +163,12 @@ with torch.no_grad():
 y_pred_scaled = y_pred_tensor.numpy().flatten()
 y_pred = np.expm1(y_pred_scaled * y_std + y_mean)
 
-# measure how good the predictions are
+# measuring how good the predictions are
 mae = mean_absolute_error(y_test_numpy, y_pred)
 rmse = mean_squared_error(y_test_numpy, y_pred) ** 0.5
 r2 = r2_score(y_test_numpy, y_pred)
 
-# show the results
+# results
 print("Neural Network using PyTorch for Used Car Price Prediction")
 print(f"MAE : {mae:,.2f}")
 print(f"RMSE: {rmse:,.2f}")
